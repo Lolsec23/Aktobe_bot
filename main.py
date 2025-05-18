@@ -7,7 +7,9 @@ from aiogram.types import ParseMode
 from aiogram.utils import executor
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-API_TOKEN = 'твой_токен_бота'  # <-- замени на свой токен
+API_TOKEN = '8026542920:AAGqYDnySvV3aQKmc4NwrirY3Ywq9YCOdjI'
+
+
 
 logging.basicConfig(level=logging.INFO)
 
