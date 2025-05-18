@@ -71,7 +71,7 @@ async def scheduler():
         await fetch_events()
         await asyncio.sleep(60 * 60)  # обновлять каждый час
 
-if name == "main":
+if __name__ == "__main__":
     loop = asyncio.get_event_loop()
     loop.create_task(scheduler())
     executor.start_polling(dp, skip_updates=True)
@@ -80,7 +80,7 @@ from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
 import asyncio
 
-TOKEN = "ВАШ_ТОКЕН"
+TOKEN = "8026542920:AAGqYDnySvV3aQKmc4NwrirY3Ywq9YCOdjI"
 bot = Bot(token=TOKEN)
 dp = Dispatcher(bot)
 
