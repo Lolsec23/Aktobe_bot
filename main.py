@@ -21,8 +21,7 @@ main_menu.add(
 @dp.message_handler(commands=["start"])
 async def send_welcome(message: types.Message):
     await message.answer(
-        "Добро пожаловать в Цифровой Актобе!"
-)
+        "Добро пожаловать в Цифровой Актобе!",
         reply_markup=main_menu
     )
 
