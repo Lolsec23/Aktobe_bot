@@ -4,7 +4,36 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
 import aiohttp
+from bs4 import BeautifulSoupimport requests
 from bs4 import BeautifulSoup
+
+def get_events():
+    url = "https://ticketon.kz/aktobe"
+    headers = {"User-Agent": "Mozilla/5.0"}
+    response = requests.get(url, headers=headers)
+    if response.status_code != 200:
+        return "Ошибка при загрузке страницы"
+
+    soup = BeautifulSoup(response.text, "html.parser")
+    events = []
+
+    # На момент написания у событий карточки с классом 'card-event'
+    for card in soup.select(".card-event"):
+        title = card.select_one(".card-event__title")
+        date = card.select_one(".card-event__date")
+        place = card.select_one(".card-event__place")
+
+        if title and date and place:
+            events.append(f"{date.text.strip()} - {title.text.strip()} ({place.text.strip()})")
+
+    if not events:
+        return "Афиша пока пуста или события не найдены."
+
+    return "\n".join(events)
+
+if __name__ == "__main__":
+    print(get_events())
+
 
 API_TOKEN = "8026542920:AAGqYDnySvV3aQKmc4NwrirY3Ywq9YCOdjI"
 
