@@ -1,61 +1,68 @@
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
-from aiogram.utils import executor
 import logging
-import os
+import asyncio
+import aiohttp
+from bs4 import BeautifulSoup
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import ParseMode
+from aiogram.utils import executor
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-API_TOKEN = os.getenv("BOT_TOKEN")
+API_TOKEN = 'твой_токен_бота'  # <-- замени на свой токен
 
 logging.basicConfig(level=logging.INFO)
+
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
+scheduler = AsyncIOScheduler()
 
-main_menu = ReplyKeyboardMarkup(resize_keyboard=True)
-main_menu.add(
-    KeyboardButton("Афиша"),
-    KeyboardButton("Справка"),
-    KeyboardButton("Бизнес-каталог"),
-    KeyboardButton("Полезное")
-)
+current_events = "Афиша событий загружается..."
 
-@dp.message_handler(commands=["start"])
-async def send_welcome(message: types.Message):
-    await message.answer(
-        "Добро пожаловать в Цифровой Актобе!",
-        reply_markup=main_menu
-    )
+async def fetch_events():
+    global current_events
+    url = 'https://ticketon.kz/aktobe'
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as resp:
+                if resp.status != 200:
+                    logging.error(f"Ошибка HTTP: статус {resp.status}")
+                    current_events = "Не удалось получить афишу (ошибка сервера)."
+                    return
 
-@dp.message_handler(lambda message: message.text == "Афиша")
-async def afisha(message: types.Message):
-    text = """Афиша событий в Актобе:
-- Концерт в Tleu 20 мая
-- Выставка в музей 22 мая"""
-    await message.answer(text)
+                html = await resp.text()
+                soup = BeautifulSoup(html, 'html.parser')
 
-@dp.message_handler(lambda message: message.text == "Справка")
-async def spravka(message: types.Message):
-    text = """Справка:
-- ЦОН №1: ул. 101 стрелковой бригады 87
-- Аптека 24ч: пр. Абулхаир хана, 45"""
-    await message.answer(text)
+                events = []
+                # Найдём все блоки событий — адаптируй селекторы, если потребуется
+                for item in soup.select('.event-card, .event-item'):  # пробуем оба варианта
+                    date_el = item.select_one('.event-date')
+                    title_el = item.select_one('.event-title')
+                    if date_el and title_el:
+                        date = date_el.text.strip()
+                        title = title_el.text.strip()
+                        events.append(f"{date}: {title}")
 
-@dp.message_handler(lambda message: message.text == "Бизнес-каталог")
-async def catalog(message: types.Message):
-    text = """Бизнес-каталог:
-- Кофейня 'Ла Крема'
-- Автомойка 'ЧистоDrive'
-- Магазин 'Электроника+’"""
-    await message.answer(text)
+                if events:
+                    current_events = "Афиша событий в Актобе:\n" + "\n".join(events)
+                else:
+                    current_events = "События не найдены."
+    except Exception as e:
+        logging.exception("Ошибка при парсинге афиши:")
+        current_events = "Ошибка при обновлении афиши."
 
-@dp.message_handler(lambda message: message.text == "Полезное")
-async def useful(message: types.Message):
-    text = """Полезное:
-- Погода: +22°C, ясно
-- Курс доллара: 450₸
-- Телефон экстренных служб: 112"""
-    await message.answer(text)
+@dp.message_handler(commands=['start'])
+async def cmd_start(message: types.Message):
+    await message.answer("Добро пожаловать! Используйте команду /events для просмотра афиши событий в Актобе.")
 
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-    load_dotenv()
+@dp.message_handler(commands=['events'])
+async def cmd_events(message: types.Message):
+    await message.answer(current_events, parse_mode=ParseMode.MARKDOWN)
+
+async def scheduler_start():
+    scheduler.add_job(fetch_events, 'interval', hours=24)
+    scheduler.start()
+    await fetch_events()  # обновляем сразу при старте
+
+if name == 'main':
+    loop = asyncio.get_event_loop()
+    loop.create_task(scheduler_start())
     executor.start_polling(dp, skip_updates=True)
