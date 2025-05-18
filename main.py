@@ -75,3 +75,78 @@ if name == "main":
     loop = asyncio.get_event_loop()
     loop.create_task(scheduler())
     executor.start_polling(dp, skip_updates=True)
+from aiogram import Bot, Dispatcher, types
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils import executor
+import asyncio
+
+TOKEN = "ВАШ_ТОКЕН"
+bot = Bot(token=TOKEN)
+dp = Dispatcher(bot)
+
+# Хранилище для интересов и напоминаний пользователей
+user_interests = {}
+user_reminders = {}
+
+# Пример данных событий (можно заменить реальным парсером)
+events = {
+    "концерт": ["Концерт группы А - 25 мая", "Концерт группы Б - 30 мая"],
+    "выставка": ["Выставка картин - 22 мая", "Фотовыставка - 28 мая"],
+    "спорт": ["Матч по футболу - 27 мая", "Теннисный турнир - 29 мая"]
+}
+
+@dp.message_handler(commands=["start"])
+async def start(message: types.Message):
+    keyboard = InlineKeyboardMarkup(row_width=3)
+    buttons = [
+        InlineKeyboardButton(text="Концерты", callback_data="interest_концерт"),
+        InlineKeyboardButton(text="Выставки", callback_data="interest_выставка"),
+        InlineKeyboardButton(text="Спорт", callback_data="interest_спорт"),
+    ]
+    keyboard.add(*buttons)
+    await message.answer("Выберите ваши интересы (можно несколько):", reply_markup=keyboard)
+
+@dp.callback_query_handler(lambda c: c.data and c.data.startswith("interest_"))
+async def process_interest(callback_query: types.CallbackQuery):
+    interest = callback_query.data[len("interest_"):]
+    user_id = callback_query.from_user.id
+    if user_id not in user_interests:
+        user_interests[user_id] = set()
+    if interest in user_interests[user_id]:
+        user_interests[user_id].remove(interest)
+        await callback_query.answer(f"Удалено: {interest}")
+    else:
+        user_interests[user_id].add(interest)
+        await callback_query.answer(f"Добавлено: {interest}")
+    chosen = ", ".join(user_interests[user_id]) if user_interests[user_id] else "ничего не выбрано"
+    await bot.edit_message_text(
+        chat_id=callback_query.message.chat.id,
+        message_id=callback_query.message.message_id,
+        text=f"Выберите ваши интересы (можно несколько):\n\nВыбрано: {chosen}",
+        reply_markup=callback_query.message.reply_markup
+    )
+
+@dp.message_handler(commands=["events"])
+async def send_events(message: types.Message):
+    user_id = message.from_user.id
+    interests = user_interests.get(user_id, [])
+    if not interests:
+        await message.answer("Вы еще не выбрали интересы. Введите /start и выберите их.")
+        return
+    text = "События по вашим интересам:\n\n"
+    for interest in interests:
+        text += f"--- {interest.upper()} ---\n"
+        for event in events.get(interest, []):
+            text += f"{event}\n"
+        text += "\n"
+    await message.answer(text)
+
+@dp.message_handler(commands=["remind"])
+async def remind(message: types.Message):
+    user_id = message.from_user.id
+    await message.answer("Напоминание установлено через 10 секунд!")
+    await asyncio.sleep(10)
+    await bot.send_message(user_id, "Напоминание: событие начинается скоро!")
+
+if name == "main":
+    executor.start_polling(dp, skip_updates=True)
