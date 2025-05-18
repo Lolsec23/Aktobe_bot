@@ -4,6 +4,7 @@ from aiogram import Bot, Dispatcher, types
 from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
 from aiogram.utils import executor
 import aiohttp
+import requests
 from bs4 import BeautifulSoupimport requests
 from bs4 import BeautifulSoup
 
