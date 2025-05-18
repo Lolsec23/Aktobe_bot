@@ -64,7 +64,7 @@ async def scheduler_start():
     scheduler.start()
     await fetch_events()  # обновляем сразу при старте
 
-if name == 'main':
+if __name__ == '__main__':
     loop = asyncio.get_event_loop()
     loop.create_task(scheduler_start())
     executor.start_polling(dp, skip_updates=True)
