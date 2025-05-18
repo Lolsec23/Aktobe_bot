@@ -27,32 +27,32 @@ async def send_welcome(message: types.Message):
 
 @dp.message_handler(lambda message: message.text == "Афиша")
 async def afisha(message: types.Message):
-    text = "Афиша событий в Актобе:"
+    text = """Афиша событий в Актобе:
 - Концерт в Tleu 20 мая
-- Выставка в музей 22 мая"
+- Выставка в музей 22 мая"""
     await message.answer(text)
 
 @dp.message_handler(lambda message: message.text == "Справка")
 async def spravka(message: types.Message):
-    text = "Справка:"
+    text = """Справка:
 - ЦОН №1: ул. 101 стрелковой бригады 87
-- Аптека 24ч: пр. Абулхаир хана, 45"
+- Аптека 24ч: пр. Абулхаир хана, 45"""
     await message.answer(text)
 
 @dp.message_handler(lambda message: message.text == "Бизнес-каталог")
 async def catalog(message: types.Message):
-    text = "Бизнес-каталог:"
+    text = """Бизнес-каталог:
 - Кофейня 'Ла Крема'
 - Автомойка 'ЧистоDrive'
-- Магазин 'Электроника+’"
+- Магазин 'Электроника+’"""
     await message.answer(text)
 
 @dp.message_handler(lambda message: message.text == "Полезное")
 async def useful(message: types.Message):
-    text = "Полезное:"
+    text = """Полезное:
 - Погода: +22°C, ясно
 - Курс доллара: 450₸
-- Телефон экстренных служб: 112"
+- Телефон экстренных служб: 112"""
     await message.answer(text)
 
 if __name__ == "__main__":
