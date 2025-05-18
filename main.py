@@ -1,40 +1,10 @@
 import asyncio
 import logging
 from aiogram import Bot, Dispatcher, types
-from aiogram.types import ReplyKeyboardMarkup, KeyboardButton
+from aiogram.types import ReplyKeyboardMarkup, KeyboardButton, InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.utils import executor
 import aiohttp
-import requests
-from bs4 import BeautifulSoupimport requests
 from bs4 import BeautifulSoup
-
-def get_events():
-    url = "https://ticketon.kz/aktobe"
-    headers = {"User-Agent": "Mozilla/5.0"}
-    response = requests.get(url, headers=headers)
-    if response.status_code != 200:
-        return "Ошибка при загрузке страницы"
-
-    soup = BeautifulSoup(response.text, "html.parser")
-    events = []
-
-    # На момент написания у событий карточки с классом 'card-event'
-    for card in soup.select(".card-event"):
-        title = card.select_one(".card-event__title")
-        date = card.select_one(".card-event__date")
-        place = card.select_one(".card-event__place")
-
-        if title and date and place:
-            events.append(f"{date.text.strip()} - {title.text.strip()} ({place.text.strip()})")
-
-    if not events:
-        return "Афиша пока пуста или события не найдены."
-
-    return "\n".join(events)
-
-if __name__ == "__main__":
-    print(get_events())
-
 
 API_TOKEN = "8026542920:AAGqYDnySvV3aQKmc4NwrirY3Ywq9YCOdjI"
 
@@ -43,12 +13,18 @@ logging.basicConfig(level=logging.INFO)
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher(bot)
 
-# Главное меню
+# Главное меню с кнопкой "Афиша событий"
 main_menu = ReplyKeyboardMarkup(resize_keyboard=True)
 main_menu.add(KeyboardButton("Афиша событий"))
 
+# Хранилища для интересов пользователей
+user_interests = {}
+user_reminders = {}
+
+# Глобальная переменная для хранения текущих событий (обновляется в фоне)
 current_events = "Афиша пока не загружена. Подождите..."
 
+# Асинхронный парсер событий с сайта ticketon.kz
 async def fetch_events():
     global current_events
     url = "https://ticketon.kz/aktobe"
@@ -62,33 +38,37 @@ async def fetch_events():
                     logging.error(f"Ошибка HTTP: статус {resp.status}")
                     current_events = "Не удалось получить афишу (ошибка сервера)."
                     return
-
                 html = await resp.text()
                 soup = BeautifulSoup(html, "html.parser")
-
                 events_list = []
-
-                # Пример - ищем блоки событий (пример надо подстроить под структуру сайта)
-                for event_div in soup.select(".event-list-item"):
-                    title = event_div.select_one(".event-title")
-                    date = event_div.select_one(".event-date")
-                    if title and date:
-                        events_list.append(f"{date.text.strip()} - {title.text.strip()}")
-
+                # Обрати внимание, что класс для событий может измениться — проверь структуру сайта
+                for event_div in soup.select(".card-event"):  
+                    title = event_div.select_one(".card-event__title")
+                    date = event_div.select_one(".card-event__date")
+                    place = event_div.select_one(".card-event__place")
+                    if title and date and place:
+                        events_list.append(f"{date.text.strip()} - {title.text.strip()} ({place.text.strip()})")
                 if events_list:
                     current_events = "Афиша событий в Актобе:\n\n" + "\n".join(events_list)
                 else:
                     current_events = "Афиша пока пуста или структура сайта изменилась."
-
     except Exception as e:
         logging.exception("Ошибка при обновлении афиши:")
         current_events = "Ошибка при обновлении афиши."
+
+# Пример данных событий для раздела интересов
+events_by_interest = {
+    "концерт": ["Концерт группы А - 25 мая", "Концерт группы Б - 30 мая"],
+    "выставка": ["Выставка картин - 22 мая", "Фотовыставка - 28 мая"],
+    "спорт": ["Матч по футболу - 27 мая", "Теннисный турнир - 29 мая"]
+}
 
 @dp.message_handler(commands=["start", "help"])
 async def send_welcome(message: types.Message):
     await message.answer(
         "Добро пожаловать в Цифровой Актобе!\n"
-        "Нажмите кнопку 'Афиша событий', чтобы увидеть актуальные мероприятия.",
+        "Нажмите кнопку 'Афиша событий', чтобы увидеть актуальные мероприятия.\n"
+        "Или введите /interests чтобы выбрать интересы.",
         reply_markup=main_menu
     )
 
@@ -96,37 +76,8 @@ async def send_welcome(message: types.Message):
 async def send_events(message: types.Message):
     await message.answer(current_events)
 
-async def scheduler():
-    while True:
-        await fetch_events()
-        await asyncio.sleep(60 * 60)  # обновлять каждый час
-
-if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.create_task(scheduler())
-    executor.start_polling(dp, skip_updates=True)
-from aiogram import Bot, Dispatcher, types
-from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
-from aiogram.utils import executor
-import asyncio
-
-TOKEN = "8026542920:AAGqYDnySvV3aQKmc4NwrirY3Ywq9YCOdjI"
-bot = Bot(token=TOKEN)
-dp = Dispatcher(bot)
-
-# Хранилище для интересов и напоминаний пользователей
-user_interests = {}
-user_reminders = {}
-
-# Пример данных событий (можно заменить реальным парсером)
-events = {
-    "концерт": ["Концерт группы А - 25 мая", "Концерт группы Б - 30 мая"],
-    "выставка": ["Выставка картин - 22 мая", "Фотовыставка - 28 мая"],
-    "спорт": ["Матч по футболу - 27 мая", "Теннисный турнир - 29 мая"]
-}
-
-@dp.message_handler(commands=["start"])
-async def start(message: types.Message):
+@dp.message_handler(commands=["interests"])
+async def start_interest_selection(message: types.Message):
     keyboard = InlineKeyboardMarkup(row_width=3)
     buttons = [
         InlineKeyboardButton(text="Концерты", callback_data="interest_концерт"),
@@ -156,17 +107,17 @@ async def process_interest(callback_query: types.CallbackQuery):
         reply_markup=callback_query.message.reply_markup
     )
 
-@dp.message_handler(commands=["events"])
-async def send_events(message: types.Message):
+@dp.message_handler(commands=["myevents"])
+async def send_personal_events(message: types.Message):
     user_id = message.from_user.id
-    interests = user_interests.get(user_id, [])
+    interests = user_interests.get(user_id, set())
     if not interests:
-        await message.answer("Вы еще не выбрали интересы. Введите /start и выберите их.")
+        await message.answer("Вы еще не выбрали интересы. Введите /interests и выберите их.")
         return
     text = "События по вашим интересам:\n\n"
     for interest in interests:
         text += f"--- {interest.upper()} ---\n"
-        for event in events.get(interest, []):
+        for event in events_by_interest.get(interest, []):
             text += f"{event}\n"
         text += "\n"
     await message.answer(text)
@@ -178,5 +129,13 @@ async def remind(message: types.Message):
     await asyncio.sleep(10)
     await bot.send_message(user_id, "Напоминание: событие начинается скоро!")
 
+# Фоновая задача для периодического обновления афиши
+async def scheduler():
+    while True:
+        await fetch_events()
+        await asyncio.sleep(60 * 60)  # Обновлять каждый час
+
 if __name__ == "__main__":
+    loop = asyncio.get_event_loop()
+    loop.create_task(scheduler())
     executor.start_polling(dp, skip_updates=True)
