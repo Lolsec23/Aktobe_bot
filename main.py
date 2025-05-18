@@ -23,6 +23,7 @@ async def send_welcome(message: types.Message):
     await message.answer(
         "Добро пожаловать в Цифровой Актобе!
 Выберите раздел:",
+)
         reply_markup=main_menu
     )
 
