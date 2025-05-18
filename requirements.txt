@@ -1,2 +1,5 @@
 aiogram==2.25.1
+aiohttp
+beautifulsoup4
+apscheduler
 python-dotenv
